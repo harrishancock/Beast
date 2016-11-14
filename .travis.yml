@@ -28,6 +28,14 @@ packages: &gcc5_pkgs
   - autotools-dev
   - libc6-dbg
 
+addons:
+  apt:
+    sources: ['ubuntu-toolchain-r-test']
+    packages:
+      - gcc-5
+      - g++-5
+      - python-software-properties
+
 matrix:
   include:
     # GCC/Coverage/Autobahn
@@ -77,7 +85,8 @@ before_install:
   - scripts/install-dependencies.sh
 
 script:
-  - scripts/build-and-test.sh
+  #- scripts/build-and-test.sh
+  - travis_retry scripts/build-and-test.sh
 
 after_script:
   - cat nohup.out || echo "nohup.out already deleted"
