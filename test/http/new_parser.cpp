@@ -64,7 +64,10 @@ enum class error
     bad_chunk_extension,
 
     /// The chunk data is invalid.
-    bad_chunk_data
+    bad_chunk_data,
+
+    /// Unexpected end of message
+    short_read
 };
 
 } // http
@@ -113,6 +116,7 @@ public:
         case error::bad_chunk_size: return "bad chunk size";
         case error::bad_chunk_extension: return "bad chunk extension";
         case error::bad_chunk_data: return "bad chunk data";
+        case error::short_read: return "unexpected end of message";
         }
     }
 
@@ -355,7 +359,9 @@ public:
     std::uint64_t
     remain() const
     {
-        return length_;
+        if(f_ & (flagContentLength | flagChunked))
+            return length_;
+        return 65536;
     }
 
     /** Returns `true` if eof is needed to determine the end of message.
@@ -382,7 +388,18 @@ public:
     void
     write_eof(error_code& ec)
     {
-
+        if(f_ & (flagContentLength | flagChunked))
+        {
+            if(! (f_ & flagComplete))
+            {
+                ec = error::short_read;
+                return;
+            }
+        }
+        else
+        {
+            f_ |= flagComplete;
+        }
     }
 
     /** Transfer body octets from buffer to the reader
