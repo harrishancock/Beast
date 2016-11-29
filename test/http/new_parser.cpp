@@ -1336,7 +1336,6 @@ public:
                 BEAST_EXPECT(m.body == "*******");
             }
         );
-#if 0
         testMatrix<false>(
             "HTTP/1.0 200 OK\r\n"
             "Server: test\r\n"
@@ -1366,19 +1365,24 @@ public:
                 BEAST_EXPECT(m.body == "*****");
             }
         );
-#endif
-#if 0
         testMatrix<true>(
             "GET / HTTP/1.1\r\n"
             "User-Agent: test\r\n"
-            "\r\n");
+            "\r\n",
+            [&](message<true, str_body, fields> const& m)
+            {
+            }
+        );
         testMatrix<true>(
             "GET / HTTP/1.1\r\n"
             "User-Agent: test\r\n"
             "X: \t x \t \r\n"
-            "\r\n");
-        //BEAST_EXPECT(p.get().fields["X"] == "x");
-#endif
+            "\r\n",
+            [&](message<true, str_body, fields> const& m)
+            {
+                BEAST_EXPECT(m.fields["X"] == "x");
+            }
+        );
     }
 
     void run() override
