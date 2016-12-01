@@ -374,8 +374,28 @@ public:
         }
     }
 
+    void testHang(yield_context do_yield)
+    {
+        std::string const s =
+            "HTTP/1.1 200 Connection Established\r\n"
+            "StartTime: 13:49:23.604\r\n"
+            "Connection: close\r\n"
+            "\r\n";
+        error_code ec;
+        parser_v1<false, streambuf_body, fields> p;
+        p.write(boost::asio::buffer(
+            s.data(), s.size()), ec);
+        if(! BEAST_EXPECTS(! ec, ec.message()))
+            return;
+        BEAST_EXPECT(! p.needs_eof());
+        BEAST_EXPECT(p.complete());
+    }
+
     void run() override
     {
+        yield_to(std::bind(&read_test::testHang,
+            this, std::placeholders::_1));
+
         testThrow();
 
         yield_to(std::bind(&read_test::testFailures,
