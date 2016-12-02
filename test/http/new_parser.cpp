@@ -1333,7 +1333,8 @@ public:
             "*******",
             [&](message<false, str_body, fields> const& m)
             {
-                BEAST_EXPECT(m.body == "*******");
+                BEAST_EXPECTS(m.body == "*******",
+                    "body='" + m.body + "'");
             }
         );
         testMatrix<false>(
