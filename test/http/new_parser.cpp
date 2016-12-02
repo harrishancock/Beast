@@ -319,7 +319,8 @@ class new_basic_parser_v1 : private new_basic_parser_v1_base
     static unsigned constexpr flagFinalChunk = 64;
     static unsigned constexpr flagSkipBody = 128;
 
-    std::uint64_t length_;
+    std::uint64_t length_ =
+        (std::numeric_limits<std::uint64_t>::max)();
     std::size_t skip_ = 0; // this could be a std::uint32_t
     std::uint8_t f_ = 0;
 
