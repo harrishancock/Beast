@@ -1303,6 +1303,94 @@ read(SyncReadStream& stream, parse_buffer& buffer,
     msg = p.release();
 }
 
+/// Efficiently relay one HTTP message between two peers
+template<
+    bool isRequest,
+    class InAsyncStream,
+    class OutAsyncStream,
+    class MessageTransformation>
+void
+relay(
+    InAsyncStream& si,
+    OutAsyncStream& so,
+    error_code& ec,
+    yield_context yield,
+    MessageTransformation const& transform)
+{
+    using namespace beast::http;
+    parser_v1<isRequest> p;
+
+    // read the incoming message headers
+    for(;;)
+    {
+        // TODO skip async_read_some if parser already has the next set of headers
+        auto const bytes_transferred =
+            si.async_read_some(p.prepare(), yield[ec]);
+        if(ec)
+            return;
+        p.commit_header(bytes_transferred, ec);
+        if(ec == parse_error::need_more)
+        {
+            ec = {};
+            continue;
+        }
+        if(ec)
+            return;
+        break;
+    }
+
+    // Create a new message by transforming the input message
+    // At minimum this will remove Content-Length and apply Transfer-Encoding: chunked
+    auto req = transform(p.get(), ec);
+    if(ec)
+        return;
+
+    // send the header
+    async_write(so, req, yield[ec]);
+    if(ec)
+        return;
+
+    for(;;)
+    {
+        // TODO skip async_read_some if we already have body data
+        // Read the next part of the body
+        auto const bytes_transferred =
+            si.async_read_some(p.prepare(), yield[ec]);
+        if(ec)
+            return;
+        p.commit_body(bytes_transferred, ec);
+        if(ec == parse_error::end_of_message)
+            break;
+        if(ec)
+            return;
+
+        // Forward this part of the body
+        // p.body() removes any chunk encoding
+        //
+        if(buffer_size(p.body()) > 0)
+        {
+            async_write(so, chunk_encode(p.body()), yield[ec]);
+            if(ec)
+                return;
+        }
+    }
+
+    // Copy promised trailer fields from incoming request
+    // that are not already present in the outgoing response:
+    //
+    for(auto field : token_list{req.fields["Trailer"]})
+        if(! req.contains(field))
+            req.insert(field, p.get().fields[field]);
+
+    // Send the final chunk, including any promised trailer fields
+    //
+    streambuf sb;
+    write_final_chunk(sb, req);
+    async_write(so, sb.data(), yield[ec]);
+    if(ec)
+        return;
+}
+
 //------------------------------------------------------------------------------
 
 class new_parser_test
