@@ -50,3 +50,13 @@ add_executable (websocket-example
 if (NOT WIN32)
     target_link_libraries(websocket-example ${Boost_LIBRARIES} Threads::Threads)
 endif()
+
+add_executable (read-until-delim
+    ${BEAST_INCLUDES}
+    ${EXTRAS_INCLUDES}
+    read_until_delim.cpp
+)
+
+if (NOT WIN32)
+    target_link_libraries(read-until-delim ${Boost_LIBRARIES} Threads::Threads)
+endif()
